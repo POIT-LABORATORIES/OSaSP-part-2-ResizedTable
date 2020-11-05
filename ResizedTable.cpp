@@ -4,7 +4,8 @@
 #include "framework.h"
 #include "ResizedTable.h"
 #include "commctrl.h"
-
+#include <string>
+#define MoveToEx(hdc, x, y) MoveToEx(hdc, x, y, NULL)
 #define MAX_LOADSTRING 100
 
 // Global Variables:
@@ -15,8 +16,38 @@ WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 TEXTMETRIC tm; 
 // Средняя ширина и полная высота символов.
 int cxChar, cyChar;
-//
-HWND hwndList;
+// Ширина и высота рабочей области.
+int cxClient, cyClient;
+// Количество строк таблицы.
+const int gridRows = 3;
+// Количество колонок таблицы.
+const int gridColumns = 5;
+
+/*
+struct TABLE
+{
+    // Количество строк таблицы.
+    int gridRows = 4;
+    // Количество колонок таблицы.
+    int gridColumns = 4;
+    // Координаты y каждой строки таблицы.
+    int gridRowsPositionY[gridRows];
+    // Содержимое ячеек таблицы.
+    wchar_t gridCellContent[gridRows * gridColumns][100];
+    // Размер содержимого ячеек таблицы.
+    int gridCellContentSize[gridRows * gridColumns];
+};
+TABLE grid;
+*/
+
+// Ординаты каждой строки таблицы.
+int gridRowsPositionY[gridRows];
+// Содержимое ячеек таблицы.
+wchar_t gridCellContent[gridRows * gridColumns][200];
+// Размер содержимого ячеек таблицы.
+int gridCellContentSize[gridRows * gridColumns];
+
+
 
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -76,7 +107,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 
     wcex.cbSize = sizeof(WNDCLASSEX);
 
-    wcex.style          = CS_HREDRAW | CS_VREDRAW;
+    wcex.style          = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
     wcex.lpfnWndProc    = WndProc;
     wcex.cbClsExtra     = 0;
     wcex.cbWndExtra     = 0;
@@ -109,8 +140,6 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
    HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
       CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
-   //hwndList = CreateWindowW(WC_LISTVIEW, szTitle, WS_VISIBLE | WS_BORDER | WS_CHILD | LVS_REPORT | LVS_EDITLABELS,
-   //    10, 10, 300, 100, hWnd, nullptr, hInstance, 0);
 
    if (!hWnd)
    {
@@ -121,6 +150,35 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    UpdateWindow(hWnd);
 
    return TRUE;
+}
+
+// Инициализация глобальных переменных.
+// cxClient, cyClient, cxChar, cyChar.
+void InitGlobalVars(HWND hWnd)
+{
+    HDC hdc = GetDC(hWnd);
+    SetTextColor(hdc, RGB(255, 100, 66));
+    // Получение ширины и высоты окна клиента.
+    cxClient = GetDeviceCaps(hdc, HORZRES);
+    cyClient = GetDeviceCaps(hdc, VERTRES);
+    GetTextMetrics(hdc, &tm);
+    cxChar = tm.tmAveCharWidth;
+    cyChar = tm.tmHeight + tm.tmExternalLeading;
+    for (int i = 0; i < gridRows; i++)
+    {
+        gridRowsPositionY[i] = 0;
+    }
+    // Инициализация содержимого ячеек.
+    for (int cell = 0; cell < (gridRows * gridColumns); cell++)
+    {
+        gridCellContentSize[cell] = wsprintf(gridCellContent[cell],
+            L"Немного статического контента. При превышении ширины ячейки, строка переносится.");  //  При превышении ширины ячейки, строка переносится.
+    }
+    gridCellContentSize[0] = wsprintf(gridCellContent[0],
+        L"Вот это первая строчка. Содержимое отлично от остальныхххххх хххххххххххх керкеркерокеркерокер керкеркеркеркеркеркерк керкеркеркеркеркеркер!");
+    SaveDC(hdc);
+    ReleaseDC(hWnd, hdc);
+    return;
 }
 
 //
@@ -139,13 +197,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
     case WM_CREATE:
         {
-            //InitCommonControls();
-            // Получение метрик символов.
-            HDC hdc = GetDC(hWnd);
-            GetTextMetrics(hdc, &tm);
-            cxChar = tm.tmAveCharWidth;
-            cyChar = tm.tmHeight + tm.tmExternalLeading;
-            ReleaseDC(hWnd, hdc);
+            InitGlobalVars(hWnd);
         }
         break;
     case WM_COMMAND:
@@ -165,14 +217,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
         }
         break;
+    case WM_SIZE:
+        {
+            cxClient = LOWORD(lParam);
+            cyClient = HIWORD(lParam);
+        }
+        break;
     case WM_PAINT:
         {
-            /*
-            PAINTSTRUCT ps;
-            HDC hdc = BeginPaint(hWnd, &ps);
-            
-            EndPaint(hWnd, &ps);
-            */
             PaintGrid(hWnd);
         }
         break;
@@ -185,16 +237,78 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
+void PaintGridCells(HDC hdc)
+{
+    // Прорисовка периметра таблицы.
+    LineTo(hdc, 0, cyClient);
+    MoveToEx(hdc, 0, cyClient-1);
+    LineTo(hdc, cxClient, cyClient-1);
+    MoveToEx(hdc, cxClient-1, cyClient-1);
+    LineTo(hdc, cxClient-1, 0);
+    MoveToEx(hdc, cxClient, 0);
+    LineTo(hdc, 0, 0);
+
+    // Прорисовка колонок таблицы.
+    int gridCellWidth = cxClient / gridColumns;
+    for (int i = 1; i <= gridColumns; i++)
+    {
+        int x = gridCellWidth * i;
+        MoveToEx(hdc, x, 0);
+        LineTo(hdc, x, cyClient);
+    }
+
+    int gridCellHeight = cyClient / gridRows;
+    int cell = 0;
+    for (int row = 0; row < gridRows; row++)
+    {
+        for (int column = 0; column < gridColumns; column++)
+        {
+            // Вычисление высоты ячейки.
+            int strcount = ((gridCellContentSize[cell] * cxChar) / gridCellWidth) + 2;
+            int cellactheight = (strcount * cyChar) + cyChar;
+            if (gridRowsPositionY[row] < cellactheight)
+            {
+                if ((row - 1) < 0)
+                {
+                    gridRowsPositionY[row] = cellactheight;
+                }
+                else
+                {
+                    gridRowsPositionY[row] = cellactheight + gridRowsPositionY[row - 1];
+                }
+            }
+            int topY;
+            if ((row - 1) < 0)
+                topY = 0;
+            else
+                topY = gridRowsPositionY[row - 1];
+
+            RECT rect;
+            rect.top = topY + cyChar; // y
+            rect.left = (gridCellWidth * column) + cxChar; // x
+            rect.right = (gridCellWidth * column) + gridCellWidth - cxChar; // x
+            rect.bottom = topY + cellactheight; // y
+            DrawText(hdc, gridCellContent[cell], gridCellContentSize[cell], &rect, DT_WORDBREAK);
+            cell++;
+        }
+    }
+
+    // Прорисовка строк таблицы.   
+    for (int i = 0; i < gridRows; i++)
+    {
+        int y = gridRowsPositionY[i];
+        MoveToEx(hdc, 0, y);
+        LineTo(hdc, cxClient, y);
+        gridRowsPositionY[i] = 0;
+    }
+    return;
+}
+
 // Прорисовка таблицы.
 void PaintGrid(HWND hwnd)
 {
     HDC hdc = GetDC(hwnd);
-    //TEXTMETRIC tm; // Метрики текста.
-    //GetTextMetrics(hdc, &tm); // Получение метрик текста.
-    int iLength;
-    wchar_t szBuffer[40];
-    TextOut(hdc, cxChar + 10, cyChar + 20, szBuffer, 
-        wsprintf(szBuffer, L"Ширина - %d, длина - %d", cxChar, cyChar));
+    PaintGridCells(hdc);
     ReleaseDC(hwnd, hdc);
     return;
 }

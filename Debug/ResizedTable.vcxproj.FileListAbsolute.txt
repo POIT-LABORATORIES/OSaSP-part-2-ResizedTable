@@ -1,2 +1,4 @@
 C:\Users\Kira\Desktop\POIT\5 sem\ОСИСП\Labs\2\ResizedTable\Debug\ResizedTable.exe
 C:\Users\Kira\Desktop\POIT\5 sem\ОСИСП\Labs\2\ResizedTable\Debug\ResizedTable.pdb
+C:\Users\OLGA\Desktop\POIT\5 sem\ОСиСП\Labs\OSaSP-part-2-ResizedTable\Debug\ResizedTable.exe
+C:\Users\OLGA\Desktop\POIT\5 sem\ОСиСП\Labs\OSaSP-part-2-ResizedTable\Debug\ResizedTable.pdb
