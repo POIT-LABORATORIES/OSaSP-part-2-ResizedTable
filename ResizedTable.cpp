@@ -23,23 +23,6 @@ const int gridRows = 3;
 // Количество колонок таблицы.
 const int gridColumns = 5;
 
-/*
-struct TABLE
-{
-    // Количество строк таблицы.
-    int gridRows = 4;
-    // Количество колонок таблицы.
-    int gridColumns = 4;
-    // Координаты y каждой строки таблицы.
-    int gridRowsPositionY[gridRows];
-    // Содержимое ячеек таблицы.
-    wchar_t gridCellContent[gridRows * gridColumns][100];
-    // Размер содержимого ячеек таблицы.
-    int gridCellContentSize[gridRows * gridColumns];
-};
-TABLE grid;
-*/
-
 // Ординаты каждой строки таблицы.
 int gridRowsPositionY[gridRows];
 // Содержимое ячеек таблицы.
@@ -284,10 +267,10 @@ void PaintGridCells(HDC hdc)
                 topY = gridRowsPositionY[row - 1];
 
             RECT rect;
-            rect.top = topY + cyChar; // y
-            rect.left = (gridCellWidth * column) + cxChar; // x
-            rect.right = (gridCellWidth * column) + gridCellWidth - cxChar; // x
-            rect.bottom = topY + cellactheight; // y
+            rect.top = topY + cyChar;
+            rect.left = (gridCellWidth * column) + cxChar; 
+            rect.right = (gridCellWidth * column) + gridCellWidth - cxChar; 
+            rect.bottom = topY + cellactheight; 
             DrawText(hdc, gridCellContent[cell], gridCellContentSize[cell], &rect, DT_WORDBREAK);
             cell++;
         }
